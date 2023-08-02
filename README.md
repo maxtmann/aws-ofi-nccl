@@ -106,6 +106,24 @@ following config option:
    --enable-trace         Enable printing trace messages
 ```
 
+To enable memory access checks with ASAN or valgrind (disabled by
+default), use the following config option:
+
+```
+   -enable-memcheck=[asan|valgrind]   Enable memory access checks
+```
+
+In case plugin is configured with `--enable-memcheck=asan` and the
+plugin is run within a CUDA application, the user should set
+environment variable `ASAN_OPTIONS` to include `protect_shadow_gap=0`
+such that ASAN will not crash on out-of-memory.
+
+In case valgrind is enabled, you can point the build to a
+custom path where valgrind is installed:
+
+```
+   --with-valgrind=PATH   Directory where valgrind is installed
+```
 
 LTTNG tracing is documented in the doc/tracing.md file.
 
