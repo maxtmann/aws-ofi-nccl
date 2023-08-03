@@ -17,7 +17,6 @@ extern "C" {
 #include "nccl-headers/error.h"
 #include "nccl_ofi_memcheck.h"
 
-
 /*
  * Internal: freelist element structure, only has meaning when the
  * element is in the freelist (as opposed to owned by the user).  Will
@@ -204,6 +203,7 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 	int ret;
 	struct nccl_ofi_freelist_elem_t *entry;
 	void *buf = NULL;
+	size_t user_entry_size = freelist->entry_size - MEMCHECK_REDZONE_SIZE;
 
 	assert(freelist);
 
@@ -239,14 +239,14 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 		nccl_net_ofi_mem_noaccess(buf + reginfo_offset, elem_size);
 		/* Remainder of reginfo structure is accessible and defined */
 		nccl_net_ofi_mem_defined(buf + reginfo_offset + elem_size, reginfo_size - elem_size);
-		/* Entry after reginfo structure is accessible but undefined */
+		/* Remaining entry after reginfo structure is accessible but undefined */
 		nccl_net_ofi_mem_undefined(buf + reginfo_offset + reginfo_size,
-					   freelist->entry_size - reginfo_offset - reginfo_size);
+					   user_entry_size - reginfo_offset - reginfo_size);
 	} else {
-		/* Entire entry is accessible but undefined. Note that
-		 * this allows the user to override the
-		 * nccl_ofi_freelist_elem_t structure. */
-		nccl_net_ofi_mem_undefined(buf, freelist->entry_size);
+		/* Entry allocated by the user is accessible but
+		 * undefined. Note that this allows the user to
+		 * override the nccl_ofi_freelist_elem_t structure. */
+		nccl_net_ofi_mem_undefined(buf, user_entry_size);
 	}
 
 cleanup:
@@ -270,6 +270,7 @@ static inline void nccl_ofi_freelist_entry_free(nccl_ofi_freelist_t *freelist, v
 {
 	int ret;
 	struct nccl_ofi_freelist_elem_t *entry;
+	size_t user_entry_size = freelist->entry_size - MEMCHECK_REDZONE_SIZE;
 
 	assert(freelist);
 	assert(entry_p);
@@ -291,7 +292,7 @@ static inline void nccl_ofi_freelist_entry_free(nccl_ofi_freelist_t *freelist, v
 	entry->next = freelist->entries;
 	freelist->entries = entry;
 
-	nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
+	nccl_net_ofi_mem_noaccess(entry->ptr, user_entry_size);
 
 	ret = pthread_mutex_unlock(&freelist->lock);
 	if (ret != 0) {

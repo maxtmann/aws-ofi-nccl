@@ -24,6 +24,13 @@ extern "C" {
 #endif
 
 /**
+ * MEMCHECK_REDZONE_SIZE defines the size of redzones prefixing each
+ * entry. Redzones are required to be a multiple of 8 due to ASAN
+ * shadow-map granularity */
+_Static_assert(MEMCHECK_REDZONE_SIZE % MEMCHECK_GRANULARITY == 0,
+	       "Size of redzone is not a multiple of ASAN shadow-map granularity");
+
+/**
  * @file
  * This module defines interfaces for providing hinting about the
  * expected state of a memory region.  This can be used to detect
