@@ -39,6 +39,7 @@ static int freelist_init_internal(size_t entry_size,
 	 * bytes. */
 	freelist->entry_size = ROUND_UP(nccl_ofi_max_size_t(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)),
 					MEMCHECK_GRANULARITY);
+	freelist->entry_size += MEMCHECK_REDZONE_SIZE;
 	freelist->num_allocated_entries = 0;
 	freelist->max_entry_count = max_entry_count;
 	freelist->increase_entry_count = increase_entry_count;
@@ -208,6 +209,11 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 
 	for (size_t i = 0 ; i < allocation_count ; ++i) {
 		struct nccl_ofi_freelist_elem_t *entry;
+		size_t user_entry_size = freelist->entry_size - MEMCHECK_REDZONE_SIZE;
+
+		nccl_net_ofi_mem_noaccess(buffer, MEMCHECK_REDZONE_SIZE);
+		buffer += MEMCHECK_REDZONE_SIZE;
+
 		if (freelist->have_reginfo) {
 			struct nccl_ofi_freelist_reginfo_t *reginfo =
 				(struct nccl_ofi_freelist_reginfo_t*)(buffer + freelist->reginfo_offset);
@@ -223,9 +229,9 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 		freelist->entries = entry;
 		freelist->num_allocated_entries++;
 
-		nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
+		nccl_net_ofi_mem_noaccess(entry->ptr, user_entry_size);
 
-		buffer += freelist->entry_size;
+		buffer += user_entry_size;
 	}
 
 	nccl_net_ofi_mem_noaccess(block, sizeof(struct nccl_ofi_freelist_block_t));
