@@ -88,6 +88,10 @@ struct nccl_ofi_freelist_reginfo_t {
 	   start of this buffer */
 	size_t base_offset;
 	void *mr_handle;
+	/* Redzone at the end of this structure. redzone must be the
+	 * last entry in reginfo_t, and should be ignored by the
+	 * caller */
+	char redzone[MEMCHECK_REDZONE_SIZE];
 };
 typedef struct nccl_ofi_freelist_reginfo_t nccl_ofi_freelist_reginfo_t;
 
@@ -237,10 +241,15 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 		size_t reginfo_offset = freelist->reginfo_offset;
 		size_t elem_size = sizeof(struct nccl_ofi_freelist_elem_t);
 		size_t reginfo_size = sizeof(struct nccl_ofi_freelist_reginfo_t);
+		size_t redzone_offset = offsetof(struct nccl_ofi_freelist_reginfo_t, redzone);
+		size_t redzone_size = reginfo_size - redzone_offset;
 
 		nccl_net_ofi_mem_undefined(buf, reginfo_offset);
 		nccl_net_ofi_mem_noaccess(buf + reginfo_offset, elem_size);
-		nccl_net_ofi_mem_defined(buf + reginfo_offset + elem_size, reginfo_size - elem_size);
+		nccl_net_ofi_mem_defined(buf + reginfo_offset + elem_size,
+					 redzone_offset - elem_size);
+		nccl_net_ofi_mem_noaccess(buf + reginfo_offset + redzone_offset,
+					  redzone_size);
 		nccl_net_ofi_mem_undefined(buf + reginfo_offset + reginfo_size,
 					   user_entry_size - reginfo_offset - reginfo_size);
 	} else {
