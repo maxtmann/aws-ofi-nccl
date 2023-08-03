@@ -90,11 +90,18 @@ struct nccl_ofi_freelist_reginfo_t {
 	   start of this buffer */
 	size_t base_offset;
 	void *mr_handle;
+	/* Redzone at the end of this structure. redzone must be the
+	 * last entry in reginfo_t, and should be ignored by the
+	 * caller */
+	char redzone[MEMCHECK_REDZONE_SIZE];
 };
 typedef struct nccl_ofi_freelist_reginfo_t nccl_ofi_freelist_reginfo_t;
 
 _Static_assert(offsetof(nccl_ofi_freelist_reginfo_t, elem) == 0,
 	       "elem is not the first member of the structure nccl_ofi_freelist_reginfo_t");
+_Static_assert(sizeof(nccl_ofi_freelist_reginfo_t) - offsetof(nccl_ofi_freelist_reginfo_t, redzone) == MEMCHECK_REDZONE_SIZE,
+	       "redzone is not the last member of the structure nccl_ofi_freelist_reginfo_t");
+
 _Static_assert(sizeof(nccl_ofi_freelist_reginfo_t) % MEMCHECK_GRANULARITY == 0,
 	       "Size of structure nccl_ofi_freelist_reginfo_t is not a multiple of MEMCHECK_GRANULARITY bytes");
 
@@ -239,6 +246,7 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 		size_t reginfo_offset = freelist->reginfo_offset;
 		size_t elem_size = sizeof(struct nccl_ofi_freelist_elem_t);
 		size_t reginfo_size = sizeof(struct nccl_ofi_freelist_reginfo_t);
+		size_t redzone_offset = offsetof(struct nccl_ofi_freelist_reginfo_t, redzone);
 
 		/* First part of entry until reginfo structure is accessible but undefined */
 		nccl_net_ofi_mem_undefined(buf, reginfo_offset);
@@ -246,8 +254,14 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 		 * nccl_ofi_freelist_elem_t structure, is marked as
 		 * not accessible */
 		nccl_net_ofi_mem_noaccess(buf + reginfo_offset, elem_size);
-		/* Remainder of reginfo structure is accessible and defined */
-		nccl_net_ofi_mem_defined(buf + reginfo_offset + elem_size, reginfo_size - elem_size);
+		/* Remainder of reginfo structure except last member
+		 * (redzone) is accessible and defined */
+		nccl_net_ofi_mem_defined(buf + reginfo_offset + elem_size,
+					 redzone_offset - elem_size);
+		/* Redzone at the end of the reginfo structure is
+		 * marked as not accessible */
+		nccl_net_ofi_mem_noaccess(buf + reginfo_offset + redzone_offset,
+					  MEMCHECK_REDZONE_SIZE);
 		/* Remaining entry after reginfo structure is accessible but undefined */
 		nccl_net_ofi_mem_undefined(buf + reginfo_offset + reginfo_size,
 					   user_entry_size - reginfo_offset - reginfo_size);
