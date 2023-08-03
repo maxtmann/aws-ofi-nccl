@@ -138,6 +138,22 @@ custom path where valgrind is installed:
    --with-valgrind=PATH   Directory where valgrind is installed
 ```
 
+In case plugin allocates a block of memory to store multiple
+structures, redzones are added between adjacent objects such that
+memory access checker can detect access out of the boundaries of these
+objects. The redzones are dedicated memory areas that are marked as
+not accessible by memory access checkers. The default size of redzones
+is 16 bytes in case memory access checks are enabled and 0
+otherwise. To control the size of redzones, use the following config
+option:
+
+```
+   MEMCHECK_REDZONE_SIZE=REDZONE_SIZE   Size of redzones in bytes
+```
+
+Redzones are required to be a multiple of 8 due to ASAN shadow-map
+granularity.
+
 LTTNG tracing is documented in the doc/tracing.md file.
 
 To enable LTTNG tracing, use the following configuration option:
