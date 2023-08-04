@@ -260,6 +260,8 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 		freelist->entries = entry;
 		freelist->num_allocated_entries++;
 
+		nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
+
 		buffer += freelist->entry_size;
 	}
 
