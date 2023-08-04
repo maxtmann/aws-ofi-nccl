@@ -132,6 +132,12 @@ int nccl_ofi_freelist_init_mr(size_t entry_size,
 			      size_t reginfo_offset,
 			      nccl_ofi_freelist_t **freelist_p)
 {
+	if (OFI_UNLIKELY(reginfo_offset % MEMCHECK_GRANULARITY != 0)) {
+		NCCL_OFI_WARN("Argument of reginfo_offset must be a multiple of MEMCHECK_GRANULARITY but got %zu",
+			      reginfo_offset);
+		return -EINVAL;
+	}
+
 	return freelist_init_internal(entry_size,
 				      initial_entry_count,
 				      increase_entry_count,
