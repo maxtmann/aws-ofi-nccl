@@ -140,10 +140,11 @@ int nccl_ofi_freelist_init(size_t entry_size,
  * own memory registration, allowing the freelist to grow over time
  * similar to the simple freelist.
  *
- * Unlike simple freelists, the complex freelist imposes a
- * restriction on the item stored in the freelist.  The item must
- * contain a nccl_ofi_freelist_reginfo_t structure reginfo_offset
- * bytes into the structure.  The mr_handle field of the reginfo_t
+ * Unlike simple freelists, the complex freelist imposes a restriction
+ * on the item stored in the freelist.  The item must contain a
+ * nccl_ofi_freelist_reginfo_t structure reginfo_offset bytes into the
+ * structure. reginfo_offset must be a multiple of
+ * MEMCHECK_GRANULARITY. The mr_handle field of the reginfo_t
  * structure will contain the handle returned from regmr_fn() being
  * called for the allocation block and the base_offset field will
  * contain the offset (in bytes) from the start of the memory
@@ -216,8 +217,11 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 	}
 
 	entry = freelist->entries;
+	nccl_net_ofi_mem_defined(entry, sizeof(struct nccl_ofi_freelist_elem_t));
 	freelist->entries = entry->next;
 	buf = entry->ptr;
+
+	nccl_net_ofi_mem_defined(buf, freelist->entry_size);
 
 cleanup:
 	ret = pthread_mutex_unlock(&freelist->lock);
@@ -259,6 +263,8 @@ static inline void nccl_ofi_freelist_entry_free(nccl_ofi_freelist_t *freelist, v
 
 	entry->next = freelist->entries;
 	freelist->entries = entry;
+
+	nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
 
 	ret = pthread_mutex_unlock(&freelist->lock);
 	if (ret != 0) {

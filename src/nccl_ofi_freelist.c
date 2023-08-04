@@ -99,6 +99,16 @@ int nccl_ofi_freelist_init_mr(size_t entry_size,
 			      size_t reginfo_offset,
 			      nccl_ofi_freelist_t **freelist_p)
 {
+	/* Since ASAN shadow-memory tracks state for
+	 * MEMCHECK_GRANULARITY-byte blocks of VA space, ensure that
+	 * nccl_ofi_freelist_reginfo_t structure is
+	 * MEMCHECK_GRANULARITY-byte aligned. */
+	if (OFI_UNLIKELY(reginfo_offset % MEMCHECK_GRANULARITY != 0)) {
+		NCCL_OFI_WARN("Argument of reginfo_offset must be a multiple of MEMCHECK_GRANULARITY but got %zu",
+			      reginfo_offset);
+		return -EINVAL;
+	}
+
 	return freelist_init_internal(entry_size,
 				      initial_entry_count,
 				      increase_entry_count,
@@ -212,6 +222,8 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 
 		freelist->entries = entry;
 		freelist->num_allocated_entries++;
+
+		nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
 
 		buffer += freelist->entry_size;
 	}
