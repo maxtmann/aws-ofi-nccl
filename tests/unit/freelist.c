@@ -35,7 +35,7 @@ int deregmr_simple(void *handle)
 }
 
 struct random_freelisted_item {
-	int random;
+	size_t random;
 	nccl_ofi_freelist_reginfo_t reginfo;
 	char buf[419];
 };
