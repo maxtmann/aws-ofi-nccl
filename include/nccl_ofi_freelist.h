@@ -216,8 +216,11 @@ static inline void *nccl_ofi_freelist_entry_alloc(nccl_ofi_freelist_t *freelist)
 	}
 
 	entry = freelist->entries;
+	nccl_net_ofi_mem_defined(entry, sizeof(*entry));
 	freelist->entries = entry->next;
 	buf = entry->ptr;
+
+	nccl_net_ofi_mem_defined(buf, freelist->entry_size);
 
 cleanup:
 	ret = pthread_mutex_unlock(&freelist->lock);
@@ -259,6 +262,8 @@ static inline void nccl_ofi_freelist_entry_free(nccl_ofi_freelist_t *freelist, v
 
 	entry->next = freelist->entries;
 	freelist->entries = entry;
+
+	nccl_net_ofi_mem_noaccess(entry->ptr, freelist->entry_size);
 
 	ret = pthread_mutex_unlock(&freelist->lock);
 	if (ret != 0) {
