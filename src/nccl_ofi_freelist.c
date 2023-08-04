@@ -32,7 +32,8 @@ static int freelist_init_internal(size_t entry_size,
 		return -ENOMEM;
 	}
 
-	freelist->entry_size = ROUND_UP(nccl_ofi_max_size_t(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)), 8);
+	freelist->entry_size = ROUND_UP(nccl_ofi_max_size_t(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)),
+					MEMCHECK_GRANULARITY);
 	freelist->num_allocated_entries = 0;
 	freelist->max_entry_count = max_entry_count;
 	freelist->increase_entry_count = increase_entry_count;
@@ -113,6 +114,7 @@ int nccl_ofi_freelist_fini(nccl_ofi_freelist_t *freelist)
 
 	while (freelist->blocks) {
 		struct nccl_ofi_freelist_block_t *block = freelist->blocks;
+		nccl_net_ofi_mem_defined(block, sizeof(struct nccl_ofi_freelist_block_t));
 		freelist->blocks = block->next;
 
 		/* note: the base of the allocation and the memory
@@ -208,6 +210,8 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 
 		buffer += freelist->entry_size;
 	}
+
+	nccl_net_ofi_mem_noaccess(block, sizeof(struct nccl_ofi_freelist_block_t));
 
 	return 0;
 }
