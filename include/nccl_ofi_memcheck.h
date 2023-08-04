@@ -9,6 +9,12 @@
 extern "C" {
 #endif
 
+/*
+ * Memory access tracing requires memory areas to be 8-byte aligned
+ * because ASAN shadow-memory granularity is 8 bytes.
+ */
+#define MEMCHECK_GRANULARITY (8)
+
 #if ENABLE_VALGRIND
 #include "nccl_ofi_memcheck_valgrind.h"
 #elif ENABLE_ASAN
