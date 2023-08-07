@@ -550,7 +550,7 @@ static ncclResult_t set_mr_req_attr(nccl_ofi_mr_keypool_t *key_pool, int dev_id,
 
 	/* Add FI_WRITE (source of fi_write) and FI_REMOTE_WRITE (target of fi_write) 
 	   for RDMA send/recv buffers */
-	mr_attr->access |= (FI_WRITE | FI_REMOTE_WRITE);
+	mr_attr->access |= (FI_WRITE | FI_REMOTE_WRITE | FI_READ | FI_REMOTE_READ);
 
 	switch (type) {
 	case NCCL_PTR_HOST:
