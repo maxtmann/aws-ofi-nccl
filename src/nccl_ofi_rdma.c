@@ -5800,7 +5800,7 @@ ncclResult_t nccl_net_ofi_rdma_init(nccl_ofi_topo_t *topo,
 	ncclResult_t ret = ncclSuccess;
 	int dev_id = 0;
 	nccl_net_ofi_device_t **base_devs = NULL;
-	int num_rails = 0;
+	int num_rails = 1;
 	int num_devs = 0;
 	struct fi_info *info_list = NULL;
 	size_t rr_threshold = ofi_nccl_round_robin_threshold();
@@ -5837,20 +5837,6 @@ ncclResult_t nccl_net_ofi_rdma_init(nccl_ofi_topo_t *topo,
 	ret = nccl_ofi_topo_group(topo);
 	if (ret != ncclSuccess) {
 		NCCL_OFI_WARN("Failed to group NICs");
-		goto error;
-	}
-
-	num_rails = topo->max_group_size;
-	if (num_rails > MAX_NUM_RAILS) {
-		NCCL_OFI_WARN("Unexpected number of rails of device %i. Maximum is %i but got %i",
-			      dev_id, MAX_NUM_RAILS, num_rails);
-		ret = ncclInternalError;
-		goto error;
-	}
-	if (num_rails < 1) {
-		NCCL_OFI_WARN("Unexpected number of rails of device %i. Expected at least one NIC but got %i",
-			      dev_id, num_rails);
-		ret = ncclInternalError;
 		goto error;
 	}
 
@@ -5912,9 +5898,9 @@ ncclResult_t nccl_net_ofi_rdma_init(nccl_ofi_topo_t *topo,
 
 		/* Ensure that number of rails are the same across devices */
 		int length = ofi_info_list_length(info_list);
-		if (num_rails != length) {
-			NCCL_OFI_WARN("Wrong number of NICs for device %i. Expected %i but got %i",
-				      dev_id, num_rails, length);
+		if (length == 0) {
+			NCCL_OFI_WARN("Wrong number of NICs for device %i. Expected at least one but got %i",
+				      dev_id, length);
 			ret = ncclInternalError;
 			goto error;
 		}
