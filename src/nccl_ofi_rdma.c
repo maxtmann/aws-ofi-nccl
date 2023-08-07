@@ -546,20 +546,32 @@ static ncclResult_t set_mr_req_attr(nccl_ofi_mr_keypool_t *key_pool, int dev_id,
 	/* Initialize MR attributes */
 	mr_attr->mr_iov = iov;
 	mr_attr->iov_count = 1;
-	mr_attr->access = FI_SEND | FI_RECV;
 
-	/* Add FI_WRITE (source of fi_write) and FI_REMOTE_WRITE (target of fi_write) 
-	   for RDMA send/recv buffers */
+	/*
+	 * Provide access to use buffers for source/target of messages.
+	 * Communication buffers are used as message source when sending data eagerly.
+	 * Bounce buffers are used as message target when receiving eager data or control message.
+	 */
+	mr_attr->access = FI_SEND | FI_RECV;
+	/* Communication buffers are used as source/target of RMA writes */
 	mr_attr->access |= (FI_WRITE | FI_REMOTE_WRITE);
 
 	switch (type) {
 	case NCCL_PTR_HOST:
-		mr_attr->access |= FI_READ;
+		/*
+		 * Host buffers are used as RMA read source on eager local copy
+		 * and RMA read target on GPU flush.
+		 */
+		mr_attr->access |= FI_READ | FI_REMOTE_READ;
 		mr_attr->iface = FI_HMEM_SYSTEM;
 		break;
 #if HAVE_CUDA
 	case NCCL_PTR_CUDA:
-		mr_attr->access |= FI_REMOTE_READ;
+		/*
+		 * CUDA buffers are used as RMA read source on GPU flush
+		 * and RMA read target on eager local copy.
+		 */
+		mr_attr->access |= FI_READ | FI_REMOTE_READ;
 		mr_attr->iface = FI_HMEM_CUDA;
 
 		/* Get CUDA device ID */
@@ -571,7 +583,10 @@ static ncclResult_t set_mr_req_attr(nccl_ofi_mr_keypool_t *key_pool, int dev_id,
 #endif
 #if HAVE_NEURON
 	case NCCL_PTR_NEURON:
-		mr_attr->access |= FI_REMOTE_READ;
+		/*
+		 * Neuron buffers are used as RMA read target on eager local copy.
+		 */
+		mr_attr->access |= FI_READ;
 		mr_attr->iface = FI_HMEM_NEURON;
 		/*
 		 * Store a sentinel; libfabric requires this to be initialized Libfabric
