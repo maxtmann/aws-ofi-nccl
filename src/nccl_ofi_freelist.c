@@ -5,10 +5,15 @@
 #include "config.h"
 
 #include <assert.h>
+#include <stdint.h>
+
 
 #include "nccl_ofi.h"
 #include "nccl_ofi_freelist.h"
 #include "nccl_ofi_math.h"
+
+#define LOG_ENTRY_ALIGNMENT (12)
+#define ENTRY_ALIGNMENT (1ul << LOG_ENTRY_ALIGNMENT)
 
 #define ROUND_UP(x, y) (((x) + (y)-1)  & (~((y)-1)) )
 
@@ -32,7 +37,7 @@ static int freelist_init_internal(size_t entry_size,
 		return -ENOMEM;
 	}
 
-	freelist->entry_size = ROUND_UP(nccl_ofi_max_size_t(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)), 8);
+	freelist->entry_size = ROUND_UP(nccl_ofi_max_size_t(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)), nccl_ofi_max_size_t(8, ENTRY_ALIGNMENT));
 	freelist->num_allocated_entries = 0;
 	freelist->max_entry_count = max_entry_count;
 	freelist->increase_entry_count = increase_entry_count;
@@ -165,19 +170,22 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 	   buffers are more likely to be page aligned (or aligned to
 	   their size, as the case may be). */
 	buffer = malloc(sizeof(struct nccl_ofi_freelist_block_t) +
-			(freelist->entry_size * allocation_count));
+			(freelist->entry_size * allocation_count) +
+			ENTRY_ALIGNMENT - 1);
 	if (!buffer) {
 		NCCL_OFI_WARN("freelist extension malloc failed: %s", strerror(errno));
 		return -ENOMEM;
 	}
 
-	block = (struct nccl_ofi_freelist_block_t*)(buffer + (freelist->entry_size * allocation_count));
+	char *aligned_buffer = (char *)((uintptr_t)(buffer + (ENTRY_ALIGNMENT - 1)) & -(uintptr_t)ENTRY_ALIGNMENT);
+
+	block = (struct nccl_ofi_freelist_block_t*)(aligned_buffer + (freelist->entry_size * allocation_count));
 	block->memory = buffer;
 	block->next = freelist->blocks;
 	freelist->blocks = block;
 
 	if (freelist->regmr_fn) {
-		ret = freelist->regmr_fn(freelist->regmr_opaque, block->memory,
+		ret = freelist->regmr_fn(freelist->regmr_opaque, aligned_buffer,
 					 freelist->entry_size * allocation_count,
 					 &block->mr_handle);
 		if (ret != 0) {
@@ -193,20 +201,22 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 		struct nccl_ofi_freelist_elem_t *entry;
 		if (freelist->have_reginfo) {
 			struct nccl_ofi_freelist_reginfo_t *reginfo =
-				(struct nccl_ofi_freelist_reginfo_t*)(buffer + freelist->reginfo_offset);
+				(struct nccl_ofi_freelist_reginfo_t*)(aligned_buffer + freelist->reginfo_offset);
 			reginfo->base_offset = (char *)buffer - (char *)block->memory;
 			reginfo->mr_handle = block->mr_handle;
 			entry = &(reginfo->elem);
 		} else {
-			entry = (struct nccl_ofi_freelist_elem_t*)buffer;
+			entry = (struct nccl_ofi_freelist_elem_t*)aligned_buffer;
 		}
-		entry->ptr = buffer;
+
+		assert((((uintptr_t)aligned_buffer) & (uintptr_t)(ENTRY_ALIGNMENT - 1)) == 0);
+		entry->ptr = aligned_buffer;
 		entry->next = freelist->entries;
 
 		freelist->entries = entry;
 		freelist->num_allocated_entries++;
 
-		buffer += freelist->entry_size;
+		aligned_buffer += freelist->entry_size;
 	}
 
 	return 0;
