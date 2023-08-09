@@ -17,6 +17,8 @@ extern "C" {
 #include <rdma/fi_cm.h>
 #include <rdma/fi_tagged.h>
 #include <rdma/fi_rma.h>
+#include <jemalloc/jemalloc.h>
+
 #if HAVE_NEURON
 #include "nccl-headers/net_neuron.h"
 #else
@@ -35,6 +37,9 @@ extern "C" {
 
 #define MAX_PROV_INFO		(15)
 #define MAX_BDF_LEN		(25)
+
+#define malloc jemalloc
+#define calloc jecalloc
 
 /*
  * NCCL_NET_HANDLE_MAXSIZE is a limited resource (and defined in NCCL).

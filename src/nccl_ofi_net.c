@@ -241,7 +241,7 @@ ncclResult_t allocate_ofi_fl(free_list_t **nccl_ofi_req_fl, size_t fl_size,
 	if (fl->free_index)
 		free_stack(fl->free_index);
 	if (fl)
-		free(fl);
+		jefree(fl);
  exit:
 	return ret;
 }
@@ -257,7 +257,7 @@ void free_ofi_fl(free_list_t *nccl_ofi_req_fl)
 	if (nccl_ofi_req_fl->free_index)
 		free_stack(nccl_ofi_req_fl->free_index);
 
-	free(nccl_ofi_req_fl);
+	jefree(nccl_ofi_req_fl);
 }
 
 void *allocate_fl_buff(free_list_t *fl, size_t buff_sz, uint64_t *next_avail_index)
@@ -1871,7 +1871,7 @@ ncclResult_t nccl_ofi_mr_keys_init(nccl_ofi_mr_keypool_t *key_pool, bool provide
 		if (pthread_mutex_init(&key_pool->lock, NULL)) {
 			NCCL_OFI_TRACE(NCCL_INIT | NCCL_NET,
 				       "Unable to initialize mutex");
-			free(key_pool->mr_keys);
+			jefree(key_pool->mr_keys);
 			return ncclSystemError;
 		}
 	}

@@ -213,7 +213,7 @@ static int threshold_scheduler_fini(nccl_net_ofi_scheduler_t *scheduler_p)
 		return ret;
 	}
 
-	free(scheduler);
+	jefree(scheduler);
 
 	return ret;
 }
@@ -259,7 +259,7 @@ int nccl_net_ofi_threshold_scheduler_init(int num_rails,
 
 	ret = scheduler_init(num_rails, &scheduler->base);
 	if (ret) {
-		free(scheduler);
+		jefree(scheduler);
 		return ret;
 	}
 
@@ -272,7 +272,7 @@ int nccl_net_ofi_threshold_scheduler_init(int num_rails,
 	if (ret) {
 		NCCL_OFI_WARN("Could not initialize mutex for round robin counter");
 		scheduler_fini(&scheduler->base);
-		free(scheduler);
+		jefree(scheduler);
 		return -ret;
 	}
 

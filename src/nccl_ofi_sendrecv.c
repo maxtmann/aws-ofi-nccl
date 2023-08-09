@@ -859,7 +859,7 @@ static ncclResult_t recv_close(nccl_net_ofi_recv_comm_t *recv_comm)
 	}
 
 	nccl_ofi_freelist_fini(r_comm->nccl_ofi_reqs_fl);
-	free(recv_comm);
+	jefree(recv_comm);
  exit:
 	return ret;
 }
@@ -1135,7 +1135,7 @@ static nccl_net_ofi_sendrecv_recv_comm_t *prepare_recv_comm(nccl_net_ofi_sendrec
 	if (OFI_UNLIKELY(ret != 0)) {
 		NCCL_OFI_WARN("Could not allocate NCCL OFI requests free list for dev %d",
 			      dev_id);
-		free(r_comm);
+		jefree(r_comm);
 		return NULL;
 	}
 
@@ -1148,7 +1148,7 @@ static nccl_net_ofi_sendrecv_recv_comm_t *prepare_recv_comm(nccl_net_ofi_sendrec
 		ret = alloc_and_reg_flush_buff(device->domain, ep->ofi_ep, key_pool,
 					       &r_comm->flush_buff, dev_id);
 		if (OFI_UNLIKELY(ret != ncclSuccess)) {
-			free(r_comm);
+			jefree(r_comm);
 			return NULL;
 		}
 	}
@@ -1248,8 +1248,8 @@ static ncclResult_t accept(nccl_net_ofi_listen_comm_t *listen_comm,
 			l_comm->conn_info = conn_info;
 			return ncclSuccess;
 		} else if (rc != 0) {
-			free(req);
-			free(conn_info);
+			jefree(req);
+			jefree(conn_info);
 			l_comm->conn_info = NULL;
 			return ncclSystemError;
 		}
@@ -1261,7 +1261,7 @@ static ncclResult_t accept(nccl_net_ofi_listen_comm_t *listen_comm,
 		/* Progress NCCL OFI engine so that connection is accepted */
 		ret = ofi_process_cq(ep->cq, device->max_tag);
 		if (OFI_UNLIKELY(ret != 0)) {
-			free(req);
+			jefree(req);
 			return ncclSystemError;
 		}
 
@@ -1283,7 +1283,7 @@ static ncclResult_t accept(nccl_net_ofi_listen_comm_t *listen_comm,
 		}
 
 		/* Done processing the request so free it */
-		free(req);
+		jefree(req);
 		comm_state->stage = COMM_CONNECTED;
 
 		break;
@@ -1303,7 +1303,7 @@ static ncclResult_t accept(nccl_net_ofi_listen_comm_t *listen_comm,
 		return ncclSystemError;
 	}
 
-	free(conn_info);
+	jefree(conn_info);
 
 	comm_state->comm = &r_comm->base.base;
 	*recv_comm = &r_comm->base;
@@ -1326,7 +1326,7 @@ static ncclResult_t listen_close(nccl_net_ofi_listen_comm_t *listen_comm)
 	}
 
 	base_ep->release_ep(base_ep);
-	free(listen_comm);
+	jefree(listen_comm);
  exit:
 	return ret;
 }
@@ -1351,12 +1351,12 @@ static inline char *get_local_address(struct fid_ep *ep)
 	if (ret == -FI_ETOOSMALL) {
 		NCCL_OFI_WARN("Endpoint's address length (%d) is larger than supplied buffer length (%d)",
 			      namelen, MAX_EP_ADDR);
-		free(local_ep_addr);
+		jefree(local_ep_addr);
 		return NULL;
 	} else if (ret != 0) {
 		NCCL_OFI_WARN("Call to fi_getname() failed with RC: %d, ERROR: %s",
 			      ret, fi_strerror(-ret));
-		free(local_ep_addr);
+		jefree(local_ep_addr);
 		return NULL;
 	}
 
@@ -1446,7 +1446,7 @@ static ncclResult_t listen(nccl_net_ofi_ep_t *base_ep,
 
  error:
 	if (l_comm)
-		free(l_comm);
+		jefree(l_comm);
  exit:
 	return ret;
 }
@@ -1526,7 +1526,7 @@ static ncclResult_t send(nccl_net_ofi_send_comm_t *send_comm, void *data, int si
 
 		if (req->state == NCCL_OFI_SENDRECV_REQ_COMPLETED) {
 			free_req_send_comm(s_comm, dev_id, req, false);
-			free(conn_info);
+			jefree(conn_info);
 			s_comm->conn_info = NULL;
 		} else {
 			NCCL_OFI_TRACE(NCCL_INIT | NCCL_NET,
@@ -1612,8 +1612,8 @@ static ncclResult_t send_close(nccl_net_ofi_send_comm_t *send_comm)
 	}
 
 	nccl_ofi_freelist_fini(s_comm->nccl_ofi_reqs_fl);
-	free(s_comm->conn_info);
-	free(send_comm);
+	jefree(s_comm->conn_info);
+	jefree(send_comm);
  exit:
 	return ret;
 }
@@ -1720,7 +1720,7 @@ static inline int create_send_comm(nccl_net_ofi_conn_handle_t *handle,
 	if (OFI_UNLIKELY(ret != ncclSuccess)) {
 		NCCL_OFI_WARN("Could not allocate NCCL OFI requests free list for dev %d",
 			      device->base.dev_id);
-		free(ret_s_comm);
+		jefree(ret_s_comm);
 		return ret;
 	}
 
@@ -1846,7 +1846,7 @@ static ncclResult_t connect(nccl_net_ofi_ep_t *base_ep,
 		/* Prepare connect request to be sent to peer */
 		req = prepare_send_req(s_comm);
 		if (OFI_UNLIKELY(req == NULL)) {
-			free(s_comm);
+			jefree(s_comm);
 			return ncclSystemError;
 		}
 
@@ -1863,7 +1863,7 @@ static ncclResult_t connect(nccl_net_ofi_ep_t *base_ep,
 		}
 		else if (rc != 0) {
 			free_req_send_comm(s_comm, dev_id, req, false);
-			free(s_comm);
+			jefree(s_comm);
 			return ncclSystemError;
 		}
 
@@ -1883,7 +1883,7 @@ static ncclResult_t connect(nccl_net_ofi_ep_t *base_ep,
 		if (OFI_UNLIKELY(ret != ncclSuccess)) {
 			assert((nccl_net_ofi_comm_t *)s_comm == req->comm);
 			free_req_send_comm(s_comm, dev_id, req, false);
-			free(s_comm);
+			jefree(s_comm);
 			return ncclSystemError;
 		}
 
@@ -1911,7 +1911,7 @@ static ncclResult_t connect(nccl_net_ofi_ep_t *base_ep,
 	assert((nccl_net_ofi_comm_t *)s_comm == req->comm);
 	if (s_comm->conn_info->connect_to_self != 1) {
 		free_req_send_comm(s_comm, dev_id, req, false);
-		free(s_comm->conn_info);
+		jefree(s_comm->conn_info);
 		s_comm->conn_info = NULL;
 	}
 
@@ -2183,7 +2183,7 @@ ncclResult_t nccl_net_ofi_sendrecv_init(struct fi_info* ofi_info_list,
 		if (!device->base.name) {
 			NCCL_OFI_WARN("Unable to allocate device name array");
 			ret = ncclSystemError;
-			free(device);
+			jefree(device);
 			goto error;
 		}
 
@@ -2194,7 +2194,7 @@ ncclResult_t nccl_net_ofi_sendrecv_init(struct fi_info* ofi_info_list,
 		ret = device_init_thread_local(device);
 		if (ret != ncclSuccess) {
 			free(device->base.name);
-			free(device);
+			jefree(device);
 			goto error;
 		}
 
@@ -2202,7 +2202,7 @@ ncclResult_t nccl_net_ofi_sendrecv_init(struct fi_info* ofi_info_list,
 		device->info = fi_dupinfo(info);
 		if (!device->info) {
 			free(device->base.name);
-			free(device);
+			jefree(device);
 			NCCL_OFI_WARN("Failed to duplicate NIC info struct");
 			goto error;
 		}
@@ -2212,7 +2212,7 @@ ncclResult_t nccl_net_ofi_sendrecv_init(struct fi_info* ofi_info_list,
 		if (ret != ncclSuccess) {
 			fi_freeinfo(device->info);
 			free(device->base.name);
-			free(device);
+			jefree(device);
 			goto error;
 		}
 
@@ -2235,10 +2235,10 @@ ncclResult_t nccl_net_ofi_sendrecv_init(struct fi_info* ofi_info_list,
 
 		fi_freeinfo(device->info);
 		free(device->base.name);
-		free(device);
+		jefree(device);
 	}
-	free(base_devs);
-	free(plugin);
+	jefree(base_devs);
+	jefree(plugin);
 	plugin = NULL;
  exit:
 	return ret;

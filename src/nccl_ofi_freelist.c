@@ -48,7 +48,7 @@ static int freelist_init_internal(size_t entry_size,
 	ret = pthread_mutex_init(&freelist->lock, NULL);
 	if (ret != 0) {
 		NCCL_OFI_WARN("Mutex initialization failed: %s", strerror(ret));
-		free(freelist);
+		jefree(freelist);
 		return ncclSystemError;
 	}
 
@@ -56,7 +56,7 @@ static int freelist_init_internal(size_t entry_size,
 	if (ret != 0) {
 		NCCL_OFI_WARN("Allocating initial freelist entries failed: %d", ret);
 		pthread_mutex_destroy(&freelist->lock);
-		free(freelist);
+		jefree(freelist);
 		return ret;
 
 	}
@@ -127,7 +127,7 @@ int nccl_ofi_freelist_fini(nccl_ofi_freelist_t *freelist)
 			}
 		}
 
-		free(block->memory);
+		jefree(block->memory);
 	}
 
 	freelist->entry_size = 0;
@@ -182,7 +182,7 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 					 &block->mr_handle);
 		if (ret != 0) {
 			NCCL_OFI_WARN("freelist extension registration failed: %d", ret);
-			free(block->memory);
+			jefree(block->memory);
 			return ret;
 		}
 	} else {

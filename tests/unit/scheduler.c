@@ -97,7 +97,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/************************/
 	/* Test one rail        */
@@ -118,7 +118,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = align - 1 */
 	size = 1;
@@ -138,7 +138,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = align */
 	size = 2;
@@ -158,7 +158,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = align + 1 */
 	size = 3;
@@ -178,7 +178,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/************************/
 	/* Test three rail        */
@@ -199,7 +199,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = 4 * align - 1 */
 	num_rails = 3;
@@ -222,7 +222,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = 4 * align */
 	num_rails = 3;
@@ -245,7 +245,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	/* Data size = 4 * align + 1 */
 	num_rails = 3;
@@ -271,7 +271,7 @@ int test_multiplexing_schedule()
 		NCCL_OFI_WARN("Verification failed");
 		return ret;
 	}
-	free(schedule);
+	jefree(schedule);
 
 	return 0;
 }

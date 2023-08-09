@@ -55,7 +55,7 @@ static nccl_ofi_topo_data_vec_t *nccl_ofi_topo_data_vec_create(size_t size)
 		vec->data = (nccl_ofi_topo_data_t*)calloc(size, sizeof(nccl_ofi_topo_data_t));
 
 		if (!vec->data) {
-			free(vec);
+			jefree(vec);
 			vec = NULL;
 			NCCL_OFI_WARN("Failed to allocate array of struct nccl_ofi_topo_data_vec_t");
 		}
@@ -183,11 +183,11 @@ void nccl_ofi_topo_free(nccl_ofi_topo_t *topo)
 		}
 
 		/* Free data array and vector */
-		free(topo->data_vec->data);
-		free(topo->data_vec);
+		jefree(topo->data_vec->data);
+		jefree(topo->data_vec);
 	}
 
-	free(topo);
+	jefree(topo);
 }
 
 /*
@@ -1070,7 +1070,7 @@ static int get_device_property(unsigned domain, unsigned bus,
 		ret = -errno;
 	}
  error:
-	if (path) free(path);
+	if (path) jefree(path);
 
 	return ret;
 }

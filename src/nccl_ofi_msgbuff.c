@@ -41,8 +41,8 @@ nccl_ofi_msgbuff_t *nccl_ofi_msgbuff_init(uint16_t buffer_size)
 
 error:
 	if (msgbuff) {
-		if (msgbuff->buff) free(msgbuff->buff);
-		free(msgbuff);
+		if (msgbuff->buff) jefree(msgbuff->buff);
+		jefree(msgbuff);
 	}
 	return NULL;
 }
@@ -57,12 +57,12 @@ bool nccl_ofi_msgbuff_destroy(nccl_ofi_msgbuff_t *msgbuff)
 		NCCL_OFI_WARN("msgbuff->buff is NULL");
 		return false;
 	}
-	free(msgbuff->buff);
+	jefree(msgbuff->buff);
 	if (pthread_mutex_destroy(&msgbuff->lock)) {
 		NCCL_OFI_WARN("Mutex destroy failed");
 		return false;
 	}
-	free(msgbuff);
+	jefree(msgbuff);
 	return true;
 }
 

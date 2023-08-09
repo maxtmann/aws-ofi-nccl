@@ -24,7 +24,7 @@ int nccl_ofi_deque_init(nccl_ofi_deque_t **deque_p)
 	int ret = pthread_mutex_init(&deque->lock, NULL);
 	if (ret != 0) {
 		NCCL_OFI_WARN("Failed to initialize deque mutex.");
-		free(deque);
+		jefree(deque);
 		return -ret;
 	}
 
@@ -46,6 +46,6 @@ int nccl_ofi_deque_finalize(nccl_ofi_deque_t *deque)
 		return -ret;
 	}
 
-	free(deque);
+	jefree(deque);
 	return 0;
 }

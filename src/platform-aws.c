@@ -111,7 +111,7 @@ static const char* get_platform_type(void)
 
 error:
 	if (platform_type)
-		free(platform_type);
+		jefree(platform_type);
 	if (fd)
 		fclose(fd);
 	return platform_type;

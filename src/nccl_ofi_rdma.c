@@ -2603,7 +2603,7 @@ static ncclResult_t reg_mr_ep(nccl_net_ofi_rdma_ep_t *ep, void *data,
 	if (OFI_UNLIKELY(ret != ncclSuccess)) {
 		NCCL_OFI_WARN("Could not set registration request attributes, dev: %d",
 			dev_id);
-		free(ret_handle);
+		jefree(ret_handle);
 		ret_handle = NULL;
 		goto exit;
 	}
@@ -2620,7 +2620,7 @@ static ncclResult_t reg_mr_ep(nccl_net_ofi_rdma_ep_t *ep, void *data,
 					      &ret_handle->mr[rail_id]);
 		if (OFI_UNLIKELY(ret != ncclSuccess)) {
 			dereg_rails(ret_handle);
-			free(ret_handle);
+			jefree(ret_handle);
 			ret_handle = NULL;
 			break;
 		}
@@ -2677,7 +2677,7 @@ static ncclResult_t dereg_mr_ep(nccl_net_ofi_rdma_mr_handle_t *mr_handle,
 		ret = ncclSystemError;
 	}
 
-	free(mr_handle);
+	jefree(mr_handle);
 	return ret;
 }
 
@@ -2729,7 +2729,7 @@ static int freelist_deregmr_host_fn(void *handle)
 		NCCL_OFI_WARN("Failed call to dereg_mr_ep");
 		return -EIO;
 	}
-	free(freelist_handle);
+	jefree(freelist_handle);
 	return 0;
 }
 
@@ -3329,7 +3329,7 @@ static ncclResult_t recv_close(nccl_net_ofi_recv_comm_t *recv_comm)
 	/* Not strictly necessary, but why leave dangling pointers? */
 	set_comm((nccl_net_ofi_rdma_ep_t *)base_ep, r_comm->local_tag, NULL);
 
-	free(r_comm);
+	jefree(r_comm);
  exit:
 	return ret;
 }
@@ -3620,7 +3620,7 @@ static nccl_net_ofi_rdma_recv_comm_t *prepare_recv_comm(nccl_net_ofi_rdma_listen
 	r_comm->msgbuff = nccl_ofi_msgbuff_init(NCCL_OFI_RDMA_MSGBUFF_SIZE);
 	if (!r_comm->msgbuff) {
 		NCCL_OFI_WARN("Failed to allocate and initialize message buffer");
-		free(r_comm);
+		jefree(r_comm);
 		return NULL;
 	}
 
@@ -3642,7 +3642,7 @@ static nccl_net_ofi_rdma_recv_comm_t *prepare_recv_comm(nccl_net_ofi_rdma_listen
 			nccl_ofi_freelist_fini(r_comm->nccl_ofi_reqs_fl);
 		if (r_comm->msgbuff)
 			nccl_ofi_msgbuff_destroy(r_comm->msgbuff);
-		free(r_comm);
+		jefree(r_comm);
 	}
 
 	return NULL;
@@ -4005,7 +4005,7 @@ static ncclResult_t listen_close(nccl_net_ofi_listen_comm_t *listen_comm)
 		return ncclSystemError;
 	}
 
-	free(listen_comm);
+	jefree(listen_comm);
 	base_ep->release_ep(base_ep);
 
 	return ncclSuccess;
@@ -4089,7 +4089,7 @@ static ncclResult_t listen(nccl_net_ofi_ep_t *base_ep,
 	goto exit;
 
  error:
-	free(l_comm);
+	jefree(l_comm);
  exit:
 	return ret;
 }
@@ -4775,7 +4775,7 @@ static ncclResult_t send_close(nccl_net_ofi_rdma_send_comm_t *s_comm)
 
 	nccl_net_ofi_rdma_ep_t *ep = (nccl_net_ofi_rdma_ep_t *) s_comm->base.base.ep;
 	set_comm(ep, s_comm->local_tag, NULL);
-	free(s_comm);
+	jefree(s_comm);
 
  exit:
 	return ret;
@@ -5064,7 +5064,7 @@ static inline int create_send_comm(nccl_net_ofi_conn_handle_t *handle,
 	ret_s_comm->msgbuff = nccl_ofi_msgbuff_init(NCCL_OFI_RDMA_MSGBUFF_SIZE);
 	if (!ret_s_comm->msgbuff) {
 		NCCL_OFI_WARN("Failed to allocate and initialize message buffer");
-		free(ret_s_comm);
+		jefree(ret_s_comm);
 		return ncclSystemError;
 	}
 
@@ -5493,14 +5493,14 @@ static ncclResult_t release_ep(nccl_net_ofi_ep_t *base_ep)
 			goto unlock;
 		}
 
-		free(ep->comms);
+		jefree(ep->comms);
 		r = nccl_ofi_deque_finalize(ep->pending_reqs_queue);
 		if (r != 0) {
 			NCCL_OFI_WARN("Failed to finalize pending_reqs_queue: %d", r);
 			ret = ncclSystemError;
 			goto unlock;
 		}
-		free(ep->rails);
+		jefree(ep->rails);
 	}
 
 	int r;
@@ -6011,17 +6011,17 @@ ncclResult_t nccl_net_ofi_rdma_init(nccl_ofi_topo_t *topo,
 
 			if (device->device_rails) {
 				release_device_ofi_resources(device);
-				free(device->device_rails);
+				jefree(device->device_rails);
 			}
 			if (device->scheduler) device->scheduler->fini(device->scheduler);
 			if (device->base.name) free(device->base.name);
 
-			free(device);
+			jefree(device);
 		}
-		free(base_devs);
+		jefree(base_devs);
 	}
 	if (plugin) {
-		free(plugin);
+		jefree(plugin);
 		plugin = NULL;
 	}
 
