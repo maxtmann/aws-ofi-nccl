@@ -3286,7 +3286,7 @@ static ncclResult_t recv_close(nccl_net_ofi_recv_comm_t *recv_comm)
 	if (is_flush_buff_enabled()) {
 		ret = dealloc_and_dereg_flush_buff(r_comm, device);
 		if (ret != ncclSuccess) {
-			NCCL_OFI_WARN("Failed to deregister ctrl buffer pool");
+			NCCL_OFI_WARN("Failed to deregister or deallocate flush buffers");
 			goto exit;
 		}
 	}
