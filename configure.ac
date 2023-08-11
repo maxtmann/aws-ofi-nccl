@@ -64,6 +64,8 @@ AC_SEARCH_LIBS([dlopen], [dl], [], [AC_MSG_ERROR([NCCL OFI Plugin requires dlope
 # Checks for external packages
 CHECK_PKG_LIBFABRIC([], [AC_MSG_ERROR([NCCL OFI Plugin could not find a working Libfabric install.])])
 
+CHECK_ENABLE_UBSAN()
+
 CHECK_PKG_LTTNG()
 
 have_device_interface=no
