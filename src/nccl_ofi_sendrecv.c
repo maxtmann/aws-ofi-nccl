@@ -624,9 +624,8 @@ static ncclResult_t register_internal_mr_buffers(struct fid_domain *domain, stru
 					void *data, size_t size,
 					int type, struct fid_mr **mr_handle)
 {
-	assert(system_page_size > 0);
-	assert(NCCL_OFI_IS_PTR_ALIGNED(data, system_page_size));
-	assert(NCCL_OFI_IS_ALIGNED(size, system_page_size));
+	assert(NCCL_OFI_IS_PTR_ALIGNED(data, sysconf(_SC_PAGESIZE)));
+	assert(NCCL_OFI_IS_ALIGNED(size, sysconf(_SC_PAGESIZE)));
 
 	return register_mr_buffers(domain, ep, key_pool, dev_id, data, size,
 				   type, mr_handle);
@@ -917,7 +916,7 @@ static ncclResult_t recv_close(nccl_net_ofi_recv_comm_t *recv_comm)
 			}
 		}
 		rc = nccl_net_ofi_dealloc_mr_buffer(r_comm->flush_buff.host_buffer,
-						    system_page_size);
+						    sysconf(_SC_PAGESIZE));
 		if (rc != 0) {
 			NCCL_OFI_WARN("Unable to deallocate flush buffer (%d)", rc);
 			ret = ncclSystemError;
@@ -1113,6 +1112,7 @@ static int alloc_and_reg_flush_buff(struct fid_domain *domain, struct fid_ep *ep
 				    nccl_net_ofi_sendrecv_flush_buffer_t *flush_buff, int dev_id)
 {
 	int ret = ncclSuccess;
+	const long system_page_size = sysconf(_SC_PAGESIZE);
 	int rc;
 	struct fid_mr *mr_handle = NULL;
 

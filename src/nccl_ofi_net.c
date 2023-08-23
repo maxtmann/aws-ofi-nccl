@@ -84,9 +84,6 @@ const char *nccl_ofi_selected_protocol = "SENDRECV";
 /* Internode network latency. */
 float net_latency = .0;
 
-/* Size of a memory page */
-long system_page_size = -1;
-
 /*
  * @brief	Allocate memory region for memory registration
  *
@@ -107,8 +104,7 @@ long system_page_size = -1;
  */
 int nccl_net_ofi_alloc_mr_buffer(size_t size, void **ptr)
 {
-	assert(system_page_size > 0);
-	assert(NCCL_OFI_IS_ALIGNED(size, system_page_size));
+	assert(NCCL_OFI_IS_ALIGNED(size, sysconf(_SC_PAGESIZE)));
 
 	*ptr = mmap(NULL, size, PROT_READ | PROT_WRITE,
 		    MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -118,7 +114,7 @@ int nccl_net_ofi_alloc_mr_buffer(size_t size, void **ptr)
 		*ptr = NULL;
 		return -errno;
 	}
-	assert(NCCL_OFI_IS_PTR_ALIGNED(*ptr, system_page_size));
+	assert(NCCL_OFI_IS_PTR_ALIGNED(*ptr, sysconf(_SC_PAGESIZE)));
 	return 0;
 }
 
@@ -135,8 +131,8 @@ int nccl_net_ofi_dealloc_mr_buffer(void *ptr, size_t size)
 {
 	int ret = 0;
 
-	assert(NCCL_OFI_IS_PTR_ALIGNED(ptr, system_page_size));
-	assert(NCCL_OFI_IS_ALIGNED(size, system_page_size));
+	assert(NCCL_OFI_IS_PTR_ALIGNED(ptr, sysconf(_SC_PAGESIZE)));
+	assert(NCCL_OFI_IS_ALIGNED(size, sysconf(_SC_PAGESIZE)));
 
 	ret = munmap(ptr, size);
 	if (OFI_UNLIKELY(ret != 0)) {
@@ -933,15 +929,6 @@ ncclResult_t nccl_net_ofi_init(ncclDebugLogger_t logFunction)
 	int ofi_ndevices = -1;
 
 	NCCL_OFI_INFO(NCCL_INIT | NCCL_NET, "Initializing " PACKAGE_STRING);
-
-	system_page_size = sysconf(_SC_PAGESIZE);
-	if (OFI_UNLIKELY(system_page_size == -1)) {
-		NCCL_OFI_WARN("Failed to get system page size (%d %s)", errno, strerror(errno));
-		ret = ncclSystemError;
-		goto exit;
-	}
-	assert(NCCL_OFI_IS_POWER_OF_TWO(system_page_size));
-	assert(system_page_size > 0);
 
 #if HAVE_CUDA
 	if (nccl_net_ofi_cuda_init() != 0) {

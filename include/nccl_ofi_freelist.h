@@ -97,6 +97,8 @@ typedef struct nccl_ofi_freelist_reginfo_t nccl_ofi_freelist_reginfo_t;
  * of the freelist interface
  */
 struct nccl_ofi_freelist_t {
+	long system_page_size;
+
 	size_t entry_size;
 
 	size_t num_allocated_entries;

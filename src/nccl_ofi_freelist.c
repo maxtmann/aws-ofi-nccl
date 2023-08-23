@@ -5,6 +5,7 @@
 #include "config.h"
 
 #include <assert.h>
+#include <unistd.h>
 
 #include "nccl_ofi.h"
 #include "nccl_ofi_freelist.h"
@@ -18,7 +19,9 @@
  * to cover full memory pages, the size assessed by the structures is
  * rounded up to page size.
  */
-static inline size_t freelist_block_mem_size_full_pages(size_t entry_size, size_t entry_count)
+static inline size_t freelist_block_mem_size_full_pages(size_t entry_size,
+							size_t entry_count,
+							long system_page_size)
 {
 	size_t block_mem_size =
 		(entry_size * entry_count) + sizeof(struct nccl_ofi_freelist_block_t);
@@ -36,8 +39,12 @@ static inline size_t freelist_block_mem_size_full_pages(size_t entry_size, size_
  *
  * @return	Maximum number of entries
  */
-static inline size_t freelist_page_padded_entry_count(size_t entry_size, size_t entry_count) {
-	size_t covered_pages_size = freelist_block_mem_size_full_pages(entry_size, entry_count);
+static inline size_t freelist_page_padded_entry_count(size_t entry_size,
+						      size_t entry_count,
+						      long system_page_size) {
+	size_t covered_pages_size = freelist_block_mem_size_full_pages(entry_size,
+								       entry_count,
+								       system_page_size);
 	return (covered_pages_size - sizeof(struct nccl_ofi_freelist_block_t)) / entry_count;
 }
 
@@ -61,6 +68,13 @@ static int freelist_init_internal(size_t entry_size,
 		return -ENOMEM;
 	}
 
+	freelist->system_page_size = sysconf(_SC_PAGESIZE);;
+	if (OFI_UNLIKELY(freelist->system_page_size == -1)) {
+		NCCL_OFI_WARN("Failed to get system page size (%d %s)", errno, strerror(errno));
+		return -errno;
+	}
+	assert(NCCL_OFI_IS_POWER_OF_TWO(freelist->system_page_size));
+
 	freelist->entry_size = NCCL_OFI_ROUND_UP(NCCL_OFI_MAX(entry_size, sizeof(struct nccl_ofi_freelist_elem_t)), 8);
 
 	/* Use initial_entry_count and increase_entry_count as lower
@@ -68,9 +82,11 @@ static int freelist_init_internal(size_t entry_size,
 	 * full system memory pages do not have unused space for
 	 * additional entries. */
 	initial_entry_count = freelist_page_padded_entry_count(freelist->entry_size,
-							       initial_entry_count);
+							       initial_entry_count,
+							       freelist->system_page_size);
 	increase_entry_count = freelist_page_padded_entry_count(freelist->entry_size,
-								increase_entry_count);
+								increase_entry_count,
+								freelist->system_page_size);
 
 	freelist->num_allocated_entries = 0;
 	freelist->max_entry_count = max_entry_count;
@@ -207,7 +223,9 @@ int nccl_ofi_freelist_add(nccl_ofi_freelist_t *freelist,
 	   structure at the end of the allocation so that large
 	   buffers are more likely to be page aligned (or aligned to
 	   their size, as the case may be). */
-	block_mem_size = freelist_block_mem_size_full_pages(freelist->entry_size, allocation_count);
+	block_mem_size = freelist_block_mem_size_full_pages(freelist->entry_size,
+							    allocation_count,
+							    freelist->system_page_size);
 	ret = nccl_net_ofi_alloc_mr_buffer(block_mem_size, (void **)&buffer);
 	if (OFI_UNLIKELY(ret != 0)) {
 		NCCL_OFI_WARN("freelist extension allocation failed (%d)", ret);

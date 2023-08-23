@@ -2693,9 +2693,8 @@ static ncclResult_t reg_internal_mr_ep(nccl_net_ofi_rdma_ep_t *ep, void *data,
 				       size_t size, int type,
 				       nccl_net_ofi_rdma_mr_handle_t **mhandle)
 {
-	assert(system_page_size > 0);
-	assert(NCCL_OFI_IS_PTR_ALIGNED(data, system_page_size));
-	assert(NCCL_OFI_IS_ALIGNED(size, system_page_size));
+	assert(NCCL_OFI_IS_PTR_ALIGNED(data, sysconf(_SC_PAGESIZE)));
+	assert(NCCL_OFI_IS_ALIGNED(size, sysconf(_SC_PAGESIZE)));
 
 	return reg_mr_ep(ep, data, size, type, mhandle);
 }
@@ -3278,6 +3277,12 @@ static inline ncclResult_t dealloc_and_dereg_flush_buff(nccl_net_ofi_rdma_recv_c
 	ncclResult_t ret = ncclSuccess;
 	int rc;
 	nccl_net_ofi_rdma_mr_handle_t *mr_handle = r_comm->flush_buff.mr_handle;
+	long system_page_size = sysconf(_SC_PAGESIZE);
+	if (system_page_size == -1) {
+		NCCL_OFI_WARN("Failed to get system page size (%d %s)", errno, strerror(errno));
+		ret = ncclSystemError;
+		goto exit;
+	}
 
 	if (mr_handle) {
 		ret = dereg_mr_ep(mr_handle, &device->key_pool);
@@ -3318,6 +3323,11 @@ static ncclResult_t alloc_and_reg_flush_buff(nccl_net_ofi_rdma_recv_comm_t *r_co
 	int rc;
 	nccl_net_ofi_rdma_mr_handle_t *mr_handle = NULL;
 	nccl_net_ofi_rdma_flush_buffer_t *flush_buff = &r_comm->flush_buff;
+	long system_page_size = sysconf(_SC_PAGESIZE);
+	if (OFI_UNLIKELY(system_page_size == -1)) {
+		NCCL_OFI_WARN("Failed to get system page size (%d %s)", errno, strerror(errno));
+		return ncclSystemError;
+	}
 
 	NCCL_OFI_TRACE(NCCL_INIT | NCCL_NET, "Registering buffer for flush operations");
 
