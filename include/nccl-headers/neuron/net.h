@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017-2022, NVIDIA CORPORATION. All rights reserved.
- * Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All rights reserved.
+ * Copyright (c) 2023-2024 Amazon.com, Inc. or its affiliates. All rights reserved.
  */
 
 #ifndef NCCL_HEADERS_NEURON_NET_H_
@@ -54,5 +54,6 @@ typedef void (*ncclDebugLogger_t)(ncclDebugLogLevel level, unsigned long flags, 
 #endif
 
 #include "net_v4.h"
+#include "net_v5.h"
 
 #endif // End NCCL_HEADERS_NEURON_NET_H
