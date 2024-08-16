@@ -164,20 +164,6 @@ static ncclResult_t ptrSupport_v2(int dev_id, int *supportedTypes)
 }
 
 
-static ncclResult_t connect_v7(int dev, void* handle, void** sendComm,
-			       ncclNetDeviceHandle_v7_t** sendDevComm)
-{
-	return nccl_net_ofi_connect(dev, handle, sendComm);
-}
-
-
-static ncclResult_t accept_v7(void* listenComm, void** recvComm,
-			      ncclNetDeviceHandle_v7_t** recvDevComm)
-{
-	return nccl_net_ofi_accept(listenComm, recvComm);
-}
-
-
 NCCL_OFI_EXPORT_SYMBOL const ncclNet_v2_t ncclNetPlugin_v2 = {
 	.name = "AWS Libfabric",
 	.init = nccl_net_ofi_init,

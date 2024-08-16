@@ -699,3 +699,16 @@ ncclResult_t nccl_net_ofi_closeListen(void *lComm)
 	int ret = listen_comm->close(listen_comm);
 	return nccl_net_ofi_retval_translate(ret);
 }
+
+ncclResult_t connect_v7(int dev, void* handle, void** sendComm,
+			ncclNetDeviceHandle_v7_t** sendDevComm)
+{
+	return nccl_net_ofi_connect(dev, handle, sendComm);
+}
+
+
+ncclResult_t accept_v7(void* listenComm, void** recvComm,
+		       ncclNetDeviceHandle_v7_t** recvDevComm)
+{
+	return nccl_net_ofi_accept(listenComm, recvComm);
+}

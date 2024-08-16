@@ -41,6 +41,10 @@ ncclResult_t nccl_net_ofi_iflush_v4(void* recvComm, void* data, int size, void* 
 ncclResult_t nccl_net_ofi_closeSend(void *sendComm);
 ncclResult_t nccl_net_ofi_closeRecv(void *recvComm);
 ncclResult_t nccl_net_ofi_closeListen(void *listenComm);
+ncclResult_t connect_v7(int dev, void* handle, void** sendComm,
+			ncclNetDeviceHandle_v7_t** sendDevComm);
+ncclResult_t accept_v7(void* listenComm, void** recvComm,
+		       ncclNetDeviceHandle_v7_t** recvDevComm);
 
 #ifdef _cplusplus
 }
