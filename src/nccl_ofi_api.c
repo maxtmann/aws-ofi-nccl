@@ -478,7 +478,6 @@ error:
 	return nccl_net_ofi_retval_translate(ret);
 }
 
-
 ncclResult_t nccl_net_ofi_isend(void *sComm, void* data, int size,
 				int tag, void *mhandle, void** req)
 {

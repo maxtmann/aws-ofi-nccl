@@ -476,6 +476,10 @@ int nccl_net_ofi_info_properties(struct fi_info *nic_prov, int dev_id, int num_d
 #endif
 	}
 
+	props->max_write_inline_size = nic_prov->tx_attr->inject_size;
+	props->max_mr_key_size = nic_prov->domain_attr->mr_key_size;
+	props->rma_supported = 0;
+
 	goto exit;
 error:
 	if (props->pci_path) {
