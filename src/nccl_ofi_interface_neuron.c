@@ -101,10 +101,10 @@ NCCL_OFI_EXPORT_SYMBOL const ncclNet_v5_t ncclNetPlugin_v5 = {
         .closeSend = nccl_net_ofi_closeSend,
         .closeRecv = nccl_net_ofi_closeRecv,
         .closeListen = nccl_net_ofi_closeListen,
-	.get_mr_key = NULL,
-	.iwrite = NULL,
-	.iwrite_inline = NULL,
-	.iread = NULL,
+	.get_mr_key = nccl_net_ofi_get_mr_key,
+	.iwrite = nccl_net_ofi_iwrite,
+	.iwrite_inline = nccl_net_ofi_iwrite_inline,
+	.iread = nccl_net_ofi_iread,
 };
 
 static ncclResult_t getProperties_v4(int dev_id, ncclNetProperties_v4_t *props)
