@@ -3485,6 +3485,34 @@ static inline nccl_net_ofi_rdma_recv_comm_t *calloc_rdma_recv_comm(int num_rails
 			num_rails * sizeof(nccl_net_ofi_rdma_recv_comm_rail_t));
 }
 
+static int get_mr_key(nccl_net_ofi_device_t *base_dev, void* mhandle,
+		      uint64_t* mr_key)
+{
+	NCCL_OFI_WARN("RDMA protocol does not support get_mr_key API function");
+	return ncclInvalidArgument;
+}
+
+static int rma_read(nccl_net_ofi_recv_comm_t *recv_comm, void* dest, size_t size, void* mhandle,
+		    uint64_t src, uint64_t mr_key, nccl_net_ofi_req_t **req)
+{
+	NCCL_OFI_WARN("RDMA protocol does not support iread API function");
+	return ncclInvalidArgument;
+}
+
+static int rma_write(nccl_net_ofi_send_comm_t *send_comm, void* src, size_t size, void* mhandle,
+		     uint64_t dest, uint64_t mr_key, nccl_net_ofi_req_t **req)
+{
+	NCCL_OFI_WARN("RDMA protocol does not support iwrite API function");
+	return ncclInvalidArgument;
+}
+
+static int rma_write_inline(nccl_net_ofi_send_comm_t *send_comm, void* src, size_t size,
+		     uint64_t dest, uint64_t mr_key, nccl_net_ofi_req_t **req)
+{
+	NCCL_OFI_WARN("RDMA protocol does not support iwrite_inline API function");
+	return ncclInvalidArgument;
+}
+
 /*
  * @brief	Allocate and setup receive communicator object for a peer. This
  * 		prepares plugin to receive messages from the given peer.
@@ -3532,6 +3560,7 @@ static nccl_net_ofi_rdma_recv_comm_t *prepare_recv_comm(nccl_net_ofi_rdma_device
 	r_comm->base.recv = recv;
 	r_comm->base.flush = flush;
 	r_comm->base.close = recv_close;
+	r_comm->base.read = rma_read;
 
 	/* Allocate recv communicator ID */
 	int comm_id = nccl_ofi_idpool_allocate_id(device->comm_idpool);
@@ -4993,6 +5022,8 @@ static inline int create_send_comm(nccl_net_ofi_conn_handle_t *handle,
 	ret_s_comm->base.deregMr = dereg_mr_send_comm;
 	ret_s_comm->base.send = send;
 	ret_s_comm->base.close = send_close;
+	ret_s_comm->base.write = rma_write;
+	ret_s_comm->base.write_inline = rma_write_inline;
 	ret_s_comm->next_msg_seq_num = 0;
 
 	/* Store communicator ID from handle in communicator */
@@ -5985,6 +6016,7 @@ nccl_net_ofi_rdma_device_create(nccl_net_ofi_plugin_t *plugin,
 	device->base.get_properties = get_properties;
 	device->base.get_ep = get_ep;
 	device->base.release = nccl_net_ofi_rdma_device_release;
+	device->base.get_mr_key = get_mr_key;
 
 	/* at this point, we can safely call the destructor to clean
 	 * up */
