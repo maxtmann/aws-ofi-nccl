@@ -531,6 +531,18 @@ static inline int ofi_info_list_length(struct fi_info *info_list)
 	return length;
 }
 
+static inline int open_close_ep(nccl_net_ofi_device_t *base_dev)
+{
+        int ret, rc;
+        nccl_net_ofi_ep_t *base_ep;
+        ret = base_dev->get_ep(base_dev, &base_ep);
+        if (ret != 0) {
+                NCCL_OFI_WARN("Error accessing endpoint. Endpoint has not been initialized.");
+                return ret;
+        }
+        return base_ep->release_ep(base_ep);
+}
+
 static inline int get_properties(nccl_net_ofi_device_t *base_dev,
 				 nccl_ofi_properties_t *props)
 {
@@ -549,7 +561,14 @@ static inline int get_properties(nccl_net_ofi_device_t *base_dev,
 		_Static_assert(NUM_COMM_ID_BITS < 31,
 			       "NUM_COMM_ID_BITS must be less than 31 so max_communicators fits in an integer");
 		props->max_communicators = NCCL_OFI_RDMA_MAX_COMMS;
+	} else {
+		return ret;
 	}
+
+	ret = open_close_ep(base_dev);
+        if (ret != 0) {
+                NCCL_OFI_WARN("Failed to open and close ep");
+        }
 	return ret;
 }
 
