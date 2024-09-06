@@ -5350,6 +5350,16 @@ static void ep_rail_release(nccl_net_ofi_ep_rail_t *rail, int dev_id)
 }
 
 
+static void ep_stashed_rail_release(nccl_net_ofi_ep_rail_t *rail, int dev_id)
+{
+	nccl_ofi_ofiutils_ep_release(rail->ofi_ep, rail->av,
+				     rail->cq, dev_id);
+	rail->ofi_ep = NULL;
+	rail->av = NULL;
+	rail->cq = NULL;
+}
+
+
 /*
  * @brief	Release libfabric resources of rdma endpoint
  */
@@ -5494,7 +5504,7 @@ static int release_ep(nccl_net_ofi_ep_t *base_ep)
 	if (ep->ref_cnt == 0) {
 		/* Ideally we would "un-post" the bounce buffers, but this
 		   should be accomplished by closing the endpoint. */
-		release_rdma_ep_resources(ep, device->base.dev_id);
+		// release_rdma_ep_resources(ep, device->base.dev_id);
 
 		ret = fini_bounce_buffers(ep);
 		if (ret != 0) {
@@ -5530,6 +5540,9 @@ static int release_ep(nccl_net_ofi_ep_t *base_ep)
 	return ret;
 }
 
+#define SWAP(T, a, b) do { T tmp = (T)a; a = (T)b; b = (T)tmp; } while (0)
+
+
 static int get_ep(nccl_net_ofi_device_t *base_dev,
 				    nccl_net_ofi_ep_t **base_ep)
 {
@@ -5550,7 +5563,7 @@ static int get_ep(nccl_net_ofi_device_t *base_dev,
 	/* Obtain thread-local rdma endpoint. Allocate and
 	 * initialize endpoint if necessary. */
 	nccl_net_ofi_rdma_ep_t *ep = pthread_getspecific(device->ep_key);
-	bool reuse_ep = ep != NULL;
+	bool is_first_ep_init = ep == NULL;
 	if (!ep) {
 		int num_rails = device->num_rails;
 
@@ -5586,13 +5599,14 @@ static int get_ep(nccl_net_ofi_device_t *base_dev,
 
 	}
 
+	nccl_net_ofi_ep_rail_t *stashed_rails = NULL;
+
 	if (ep->ref_cnt == 0) {
-		if (!reuse_ep) {
-			assert(ep->rails == NULL);
+		if (is_first_ep_init) {
 			ep->rails = calloc(ep->num_rails, sizeof(nccl_net_ofi_ep_rail_t));
 		} else {
-			assert(ep->rails != NULL);
-			memset(ep->rails, 0, ep->num_rails * sizeof(nccl_net_ofi_ep_rail_t));
+			stashed_rails = calloc(ep->num_rails, sizeof(nccl_net_ofi_ep_rail_t));
+			SWAP(void *, ep->rails, stashed_rails);
 		}
 		if (!ep->rails) {
 			ret = -ENOMEM;
@@ -5646,6 +5660,13 @@ static int get_ep(nccl_net_ofi_device_t *base_dev,
 		if (ret != 0) {
 			NCCL_OFI_WARN("Posting of bounce buffers failed!");
 			goto unlock;
+		}
+		if (!is_first_ep_init) {
+			assert(stashed_rails);
+			for (int rail_id = 0; rail_id != ep->num_rails; ++rail_id) {
+				ep_stashed_rail_release(&stashed_rails[rail_id], device->base.dev_id);
+			}
+			free(stashed_rails);
 		}
 	}
 

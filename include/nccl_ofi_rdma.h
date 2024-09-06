@@ -510,16 +510,16 @@ struct nccl_net_ofi_ep_rail {
 	int rail_id;
 
 	/* Local libfabric endpoint handle */
-	struct fid_ep *ofi_ep;
+	struct fid_ep *ofi_ep, *ofi_ep_stashed;
 
 	/* Name of local libfabric endpoint */
 	char local_ep_name[MAX_EP_ADDR];
 
 	/* Address vector handle */
-	struct fid_av *av;
+	struct fid_av *av, *av_stashed;
 
 	/* Completion Queue handle */
-	struct fid_cq *cq;
+	struct fid_cq *cq, *cq_stashed;
 
 	/*
 	 * Bounce buffer management
