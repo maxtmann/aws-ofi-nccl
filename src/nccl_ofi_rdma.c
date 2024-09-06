@@ -533,7 +533,7 @@ static inline int ofi_info_list_length(struct fi_info *info_list)
 
 static inline int open_close_ep(nccl_net_ofi_device_t *base_dev)
 {
-        int ret, rc;
+        int ret;
         nccl_net_ofi_ep_t *base_ep;
         ret = base_dev->get_ep(base_dev, &base_ep);
         if (ret != 0) {
@@ -5517,8 +5517,6 @@ static int release_ep(nccl_net_ofi_ep_t *base_ep)
 			NCCL_OFI_WARN("Failed to finalize pending_reqs_queue: %d", ret);
 			goto unlock;
 		}
-		free(ep->rails);
-		ep->rails = NULL;
 	}
 
  unlock:
@@ -5552,6 +5550,7 @@ static int get_ep(nccl_net_ofi_device_t *base_dev,
 	/* Obtain thread-local rdma endpoint. Allocate and
 	 * initialize endpoint if necessary. */
 	nccl_net_ofi_rdma_ep_t *ep = pthread_getspecific(device->ep_key);
+	bool reuse_ep = ep != NULL;
 	if (!ep) {
 		int num_rails = device->num_rails;
 
@@ -5588,7 +5587,13 @@ static int get_ep(nccl_net_ofi_device_t *base_dev,
 	}
 
 	if (ep->ref_cnt == 0) {
-		ep->rails = calloc(ep->num_rails, sizeof(nccl_net_ofi_ep_rail_t));
+		if (!reuse_ep) {
+			assert(ep->rails == NULL);
+			ep->rails = calloc(ep->num_rails, sizeof(nccl_net_ofi_ep_rail_t));
+		} else {
+			assert(ep->rails != NULL);
+			memset(ep->rails, 0, ep->num_rails * sizeof(nccl_net_ofi_ep_rail_t));
+		}
 		if (!ep->rails) {
 			ret = -ENOMEM;
 			NCCL_OFI_WARN("Unable to allocate rdma rails");
