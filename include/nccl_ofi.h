@@ -333,7 +333,7 @@ struct nccl_net_ofi_ep {
 	 * endpoint if reference counter becomes zero. Must be
 	 * protected by lock stored in base_dev.
 	 */
-	int (*release_ep)(nccl_net_ofi_ep_t *ep);
+	int (*release_ep)(nccl_net_ofi_ep_t *ep, int close);
 };
 
 enum nccl_net_ofi_comm_type_t {

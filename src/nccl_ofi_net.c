@@ -235,7 +235,7 @@ int nccl_net_ofi_create_plugin(nccl_net_ofi_plugin_t **plugin_p)
 	if (ret != 0) {
 		goto exit;
 	}
-	ret = base_ep->release_ep(base_ep);
+	ret = base_ep->release_ep(base_ep, true);
 	if (ret != 0) {
 		goto exit;
 	}

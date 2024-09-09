@@ -533,14 +533,14 @@ static inline int ofi_info_list_length(struct fi_info *info_list)
 
 static inline int open_close_ep(nccl_net_ofi_device_t *base_dev)
 {
-        int ret, rc;
+        int ret;
         nccl_net_ofi_ep_t *base_ep;
         ret = base_dev->get_ep(base_dev, &base_ep);
         if (ret != 0) {
                 NCCL_OFI_WARN("Error accessing endpoint. Endpoint has not been initialized.");
                 return ret;
         }
-        return base_ep->release_ep(base_ep);
+        return base_ep-> release_ep(base_ep, false);
 }
 
 static inline int get_properties(nccl_net_ofi_device_t *base_dev,
@@ -4000,7 +4000,7 @@ static int listen_close(nccl_net_ofi_listen_comm_t *listen_comm)
 	}
 
 	free(l_comm);
-	ret = base_ep->release_ep(base_ep);
+	ret = base_ep->release_ep(base_ep, true);
 
 	return ret;
 }
@@ -5340,8 +5340,9 @@ static int connect(nccl_net_ofi_ep_t *base_ep,
 }
 
 
-static void ep_rail_release(nccl_net_ofi_ep_rail_t *rail, int dev_id)
+static void ep_rail_release(nccl_net_ofi_ep_rail_t *rail, int dev_id, int close_ep)
 {
+	if (close_ep)
 	nccl_ofi_ofiutils_ep_release(rail->ofi_ep, rail->av,
 				     rail->cq, dev_id);
 	rail->ofi_ep = NULL;
@@ -5353,10 +5354,10 @@ static void ep_rail_release(nccl_net_ofi_ep_rail_t *rail, int dev_id)
 /*
  * @brief	Release libfabric resources of rdma endpoint
  */
-static void release_rdma_ep_resources(nccl_net_ofi_rdma_ep_t *ep, int dev_id)
+static void release_rdma_ep_resources(nccl_net_ofi_rdma_ep_t *ep, int dev_id, int close_ep)
 {
 	for (int rail_id = 0; rail_id != ep->num_rails; ++rail_id) {
-		ep_rail_release(get_rail(ep, rail_id), dev_id);
+		ep_rail_release(get_rail(ep, rail_id), dev_id, close_ep);
 	}
 }
 
@@ -5410,7 +5411,7 @@ static int ep_rail_init(nccl_net_ofi_rdma_ep_t *ep,
 
 	ret = set_local_address(ep_rail->ofi_ep, ep_rail);
 	if (ret != 0) {
-		ep_rail_release(ep_rail, dev_id);
+		ep_rail_release(ep_rail, dev_id, false);
 		return ret;
 	}
 
@@ -5422,7 +5423,7 @@ static int ep_rail_init(nccl_net_ofi_rdma_ep_t *ep,
  * @brief	Initialize libfabric resources of endpoint rails
  */
 static int init_rail_ofi_resources(nccl_net_ofi_rdma_device_t *device,
-					    nccl_net_ofi_rdma_ep_t *ep)
+				   nccl_net_ofi_rdma_ep_t *ep)
 {
 	int ret = 0;
 	int dev_id = device->base.dev_id;
@@ -5441,13 +5442,13 @@ static int init_rail_ofi_resources(nccl_net_ofi_rdma_device_t *device,
 
  exit:
 	if (ret != 0) {
-		release_rdma_ep_resources(ep, dev_id);
+		release_rdma_ep_resources(ep, dev_id, false);
 	}
 
 	return ret;
 }
 
-static int release_ep(nccl_net_ofi_ep_t *base_ep)
+static int release_ep(nccl_net_ofi_ep_t *base_ep, int close_ep)
 {
 	int ret = 0;
 
@@ -5494,7 +5495,7 @@ static int release_ep(nccl_net_ofi_ep_t *base_ep)
 	if (ep->ref_cnt == 0) {
 		/* Ideally we would "un-post" the bounce buffers, but this
 		   should be accomplished by closing the endpoint. */
-		release_rdma_ep_resources(ep, device->base.dev_id);
+		release_rdma_ep_resources(ep, device->base.dev_id, close_ep);
 
 		ret = fini_bounce_buffers(ep);
 		if (ret != 0) {

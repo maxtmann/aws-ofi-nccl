@@ -1405,7 +1405,7 @@ static int listen_close(nccl_net_ofi_listen_comm_t *listen_comm)
 		goto exit;
 	}
 
-	ret = base_ep->release_ep(base_ep);
+	ret = base_ep->release_ep(base_ep, true);
 	free(listen_comm);
  exit:
 	return ret;
@@ -2005,7 +2005,7 @@ static int connect(nccl_net_ofi_ep_t *base_ep,
 	return ret;
 }
 
-static int release_ep(nccl_net_ofi_ep_t *base_ep)
+static int release_ep(nccl_net_ofi_ep_t *base_ep, int close_ep)
 {
 	int ret = 0;
 
