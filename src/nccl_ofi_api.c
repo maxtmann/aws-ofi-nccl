@@ -372,6 +372,45 @@ ncclResult_t nccl_net_ofi_deregMr(void *comm, void *mhandle)
 	return nccl_net_ofi_retval_translate(ret);
 }
 
+ncclResult_t nccl_net_ofi_rdma_recv_physical_interconnect_id(void *comm, void *mhandle, uint16_t *id)
+{
+	int ret = 0;
+
+	/* Retrieve and validate comm */
+	nccl_net_ofi_comm_t *base_comm =
+		(nccl_net_ofi_comm_t *)comm;
+	if (OFI_UNLIKELY(base_comm == NULL)) {
+		NCCL_OFI_WARN("Invalid comm object provided");
+		return ncclInternalError;
+	}
+
+	nccl_net_ofi_mr_handle_t *mr_handle =
+		(nccl_net_ofi_mr_handle_t *)mhandle;
+	if (OFI_UNLIKELY(mr_handle == NULL)) {
+		NCCL_OFI_WARN("Invalid MR handle provided");
+		return ncclInternalError;
+	}
+
+	switch (base_comm->type) {
+	case NCCL_NET_OFI_SEND_COMM:;
+		nccl_net_ofi_send_comm_t *send_comm =
+			(nccl_net_ofi_send_comm_t *)base_comm;
+		ret = send_comm->rdmaRecvPhysicalInterconnectId(send_comm, mr_handle, id);
+		break;
+	case NCCL_NET_OFI_RECV_COMM:;
+		nccl_net_ofi_recv_comm_t *recv_comm =
+			(nccl_net_ofi_recv_comm_t *)base_comm;
+		ret = recv_comm->rdmaRecvPhysicalInterconnectId(recv_comm, mr_handle, id);
+		break;
+	default:
+		NCCL_OFI_WARN("Unexpected communicator type. Communicator type: %d",
+			      base_comm->type);
+		ret = -EINVAL;
+		break;
+	}
+
+	return nccl_net_ofi_retval_translate(ret);
+}
 
 ncclResult_t nccl_net_ofi_regMrDmaBuf(void* comm, void* data, size_t size,
 				      int type, uint64_t offset,

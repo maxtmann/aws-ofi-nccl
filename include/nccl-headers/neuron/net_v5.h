@@ -97,6 +97,16 @@ typedef struct {
   // ncclNetProperties_v5_t properties
   ncclResult_t (*iread)(void* rComm, void* dest, size_t size, void* dest_mhandle,
 			uint64_t src, uint64_t mr_key, void** request);
+  // Request ID of physical interconnect used by the device to reach the MR for
+  // RDMA write receive operations.
+  // Function is only available if `rma_supported` flag is set in
+  // ncclNetProperties_v6_t properties.
+  // Function will return -EINVAL in case RDMA Core or libfabric do
+  // not provide underlying functionality. To guarantee that,
+  // Libfabric 1.21 and RDMA Core 50 is required, e.g., delivered by
+  // EFA installer 1.33.
+  ncclResult_t (*rdmaRecvPhysicalInterconnectId)(void* comm, void* mhandle,
+						 uint16_t *id);
 } ncclNet_v5_t;
 
 #ifdef __cplusplus

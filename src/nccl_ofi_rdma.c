@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <rdma/fi_domain.h>
+#include <rdma/fi_ext_efa.h>
 
 #include "nccl_ofi.h"
 #if HAVE_CUDA
@@ -2840,6 +2842,69 @@ typedef struct {
 	nccl_ofi_idpool_t *key_pool;
 } freelist_regmr_fn_handle_t;
 
+static int rdma_recv_physical_interconnect_id(nccl_net_ofi_rdma_ep_t *ep, nccl_net_ofi_rdma_mr_handle_t *mr_handle, uint16_t *id)
+{
+#if HAVE_STRUCT_FI_EFA_OPS_DOMAIN_QUERY_MR
+	int ret = 0;
+	uint16_t ret_id = 0;
+	uint64_t flags = 0;
+	void *context = NULL;
+	struct fi_efa_ops_domain *efa_domain_ops;
+
+	for (int rail_id = 0; rail_id != mr_handle->num_rails; ++rail_id) {
+		struct fid_mr *rail_mr = mr_handle->mr[rail_id];
+		nccl_net_ofi_ep_rail_t *rail_ep = get_rail(ep, rail_id);
+		struct fid *rail_domain_fid = &rail_ep->domain->fid;
+		struct fi_efa_mr_attr efa_mr_attr = {0};
+
+		ret = fi_open_ops(rail_domain_fid, FI_EFA_DOMAIN_OPS, flags,
+				  (void **)&efa_domain_ops, context);
+		if (ret != 0) {
+			NCCL_OFI_WARN("Failed to retrieve EFA domain operations FI_EFA_DOMAIN_OPS on rail %d: %s", rail_id, fi_strerror(ret));
+			return ret;
+		}
+
+		ret = efa_domain_ops->query_mr(rail_mr, &efa_mr_attr);
+		if (ret != 0) {
+			NCCL_OFI_WARN("Error while querying MR attributes on rail %d: %s",
+				      rail_id, fi_strerror(ret));
+			return ret;
+		}
+
+		if ((efa_mr_attr.ic_id_validity & FI_EFA_MR_ATTR_RDMA_RECV_IC_ID) == 0) {
+			NCCL_OFI_WARN("Failed to retrieve ID of physical interconnect to reach MR for RDMA write receive. Attribute is not valid on rail %d.",
+				      rail_id);
+			return -EINVAL;
+		}
+		if (rail_id > 0 && efa_mr_attr.rdma_recv_ic_id != ret_id) {
+			NCCL_OFI_WARN("ID of physical interconnect for RDMA write receive mismatch. Rail %d has ID %" PRIu16 " but got " PRIu16 " before.",
+				      rail_id, efa_mr_attr.rdma_recv_ic_id, ret_id);
+			return -EINVAL;
+		}
+		ret_id = efa_mr_attr.rdma_recv_ic_id;
+	}
+
+	*id = ret_id;
+	return ret;
+#else
+	return -FI_ENOSYS;
+#endif
+}
+
+static int rdma_recv_physical_interconnect_id_send_comm(nccl_net_ofi_send_comm_t *send_comm, nccl_net_ofi_mr_handle_t *mhandle, uint16_t *id)
+{
+	nccl_net_ofi_rdma_ep_t *ep = (nccl_net_ofi_rdma_ep_t *)send_comm->base.ep;
+	nccl_net_ofi_rdma_mr_handle_t *mr_handle = (nccl_net_ofi_rdma_mr_handle_t *)mhandle;
+	return rdma_recv_physical_interconnect_id(ep, mr_handle, id);
+}
+
+static int rdma_recv_physical_interconnect_id_recv_comm(nccl_net_ofi_recv_comm_t *recv_comm, nccl_net_ofi_mr_handle_t *mhandle, uint16_t *id)
+{
+	nccl_net_ofi_rdma_ep_t *ep = (nccl_net_ofi_rdma_ep_t *)recv_comm->base.ep;
+	nccl_net_ofi_rdma_mr_handle_t *mr_handle = (nccl_net_ofi_rdma_mr_handle_t *)mhandle;
+	return rdma_recv_physical_interconnect_id(ep, mr_handle, id);
+}
+
 /**
  * Register host memory for use with the given communicator
  *
@@ -4161,6 +4226,7 @@ static nccl_net_ofi_rdma_recv_comm_t *prepare_recv_comm(nccl_net_ofi_rdma_listen
 	r_comm->base.flush = flush;
 	r_comm->base.close = recv_close_deferred;
 	r_comm->base.read = rma_read;
+	r_comm->base.rdmaRecvPhysicalInterconnectId = rdma_recv_physical_interconnect_id_recv_comm;
 
 	r_comm->comm_active = true;
 	r_comm->send_close_req = NULL;
@@ -5914,6 +5980,7 @@ static inline int create_send_comm(nccl_net_ofi_conn_handle_t *handle,
 	ret_s_comm->base.close = send_close_deferred;
 	ret_s_comm->base.write = rma_write;
 	ret_s_comm->base.write_inline = rma_write_inline;
+	ret_s_comm->base.rdmaRecvPhysicalInterconnectId = rdma_recv_physical_interconnect_id_send_comm;
 
 	ret_s_comm->comm_active = true;
 	ret_s_comm->next_msg_seq_num = 0;

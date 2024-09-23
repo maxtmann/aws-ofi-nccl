@@ -49,6 +49,7 @@ ncclResult_t nccl_net_ofi_iwrite_inline(void* sComm, void* src, size_t size,
 					uint64_t dest, uint64_t mr_key, void** req);
 ncclResult_t nccl_net_ofi_iread(void* rComm, void* dest, size_t size, void* mhandle,
 				uint64_t src, uint64_t mr_key, void** req);
+ncclResult_t nccl_net_ofi_rdma_recv_physical_interconnect_id(void *comm, void *mr_handle, uint16_t *id);
 
 #ifdef __cplusplus
 }

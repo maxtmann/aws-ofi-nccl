@@ -427,6 +427,7 @@ struct nccl_net_ofi_send_comm {
 		     uint64_t dest, uint64_t mr_key, nccl_net_ofi_req_t **req);
 	int (*write_inline)(nccl_net_ofi_send_comm_t *, void* src, size_t size,
 			    uint64_t dest, uint64_t mr_key, nccl_net_ofi_req_t **request);
+	int (*rdmaRecvPhysicalInterconnectId)(nccl_net_ofi_send_comm_t *send_comm, nccl_net_ofi_mr_handle_t *mr_handle, uint16_t *id);
 };
 
 struct nccl_net_ofi_recv_comm {
@@ -471,6 +472,7 @@ struct nccl_net_ofi_recv_comm {
 
 	int (*read)(nccl_net_ofi_recv_comm_t *recv_comm, void* dest, size_t size, void* dest_mhandle,
 		    uint64_t src, uint64_t mr_key, nccl_net_ofi_req_t **req);
+	int (*rdmaRecvPhysicalInterconnectId)(nccl_net_ofi_recv_comm_t *recv_comm, nccl_net_ofi_mr_handle_t *mr_handle, uint16_t *id);
 };
 
 /**

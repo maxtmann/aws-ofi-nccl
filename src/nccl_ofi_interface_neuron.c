@@ -105,6 +105,7 @@ NCCL_OFI_EXPORT_SYMBOL const ncclNet_v5_t ncclNetPlugin_v5 = {
 	.iwrite = nccl_net_ofi_iwrite,
 	.iwriteInline = nccl_net_ofi_iwrite_inline,
 	.iread = nccl_net_ofi_iread,
+	.rdmaRecvPhysicalInterconnectId = nccl_net_ofi_rdma_recv_physical_interconnect_id,
 };
 
 static ncclResult_t getProperties_v4(int dev_id, ncclNetProperties_v4_t *props)

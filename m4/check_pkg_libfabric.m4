@@ -11,6 +11,7 @@ AC_DEFUN([CHECK_PKG_LIBFABRIC], [
   check_pkg_CPPFLAGS_save="${CPPFLAGS}"
   check_pkg_LDFLAGS_save="${LDFLAGS}"
   check_pkg_LIBS_save="${LIBS}"
+  struct_fi_efa_ops_domain_query_mr=0
 
   AC_ARG_WITH([libfabric],
      [AS_HELP_STRING([--with-libfabric=PATH], [Path to non-standard libfabric installation])])
@@ -63,6 +64,17 @@ AC_DEFUN([CHECK_PKG_LIBFABRIC], [
 #ifdef HAVE_RDMA_FI_EXT_H
 #include <rdma/fi_ext.h>
 #endif]])])
+
+  AS_IF([test "${check_pkg_found}" = "yes"],
+        [AC_CHECK_MEMBER([struct fi_efa_ops_domain.query_mr],
+                         [struct_fi_efa_ops_domain_query_mr=1],
+			 [],
+			 [[#include <rdma/fi_domain.h>
+			   #include <rdma/fi_ext_efa.h>
+			   ]])
+	 AC_DEFINE_UNQUOTED([HAVE_STRUCT_FI_EFA_OPS_DOMAIN_QUERY_MR],
+	                    [$struct_fi_efa_ops_domain_query_mr],
+			    [Define to 1 if struct fi_efa_ops_domain.query_mr exists, 0 otherwise])])
 
   AS_IF([test "${check_pkg_found}" = "yes"],
         [$1],

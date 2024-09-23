@@ -95,6 +95,9 @@ CHECK_PKG_NEURON([AS_IF([test -n "${want_cuda}"],
                   have_device_interface=neuron])
 CHECK_PKG_CUDA([have_device_interface=cuda])
 
+AS_IF([test "$enable_neuron" = "yes" && test "$struct_fi_efa_ops_domain_query_mr" = "0"],
+      [AC_MSG_ERROR([struct fi_efa_ops_domain.query_mr required to compile ])])
+
 AS_IF([test "${have_device_interface}" = "no"],
       [AC_MSG_ERROR([NCCL OFI Plugin requires either CUDA or Neuron runtime.])])
 
