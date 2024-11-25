@@ -101,6 +101,8 @@ static nccl_ofi_deque_t *r_comm_cleanup_list = NULL;
 static pthread_mutex_t comm_cleanup_list_lock = PTHREAD_MUTEX_INITIALIZER;
 /* Number of open (not finalizing) send and recv comms */
 static int num_open_comms = 0;
+static pthread_mutex_t num_undestroyed_comms_lock = PTHREAD_MUTEX_INITIALIZER;
+static int num_undestroyed_comms = 0;
 
 /* Maximum size of inline RMA write operations */
 static size_t max_write_inline_size = 0;
@@ -108,6 +110,11 @@ static bool is_max_write_inline_size_initialized = false;
 
 /* CPU cache line size */
 static ssize_t cpu_cache_line_size;
+
+static pthread_mutex_t num_open_domains_lock = PTHREAD_MUTEX_INITIALIZER;
+static int num_open_domains = 0;
+static int total_open_domains = 0;
+
 
 /* Function prototypes */
 static int send_progress(nccl_net_ofi_rdma_req_t *req);
@@ -3750,6 +3757,10 @@ static inline void free_rdma_recv_comm(nccl_net_ofi_rdma_recv_comm_t *r_comm) {
 
 static int recv_comm_destroy(nccl_net_ofi_rdma_recv_comm_t *r_comm)
 {
+  nccl_net_ofi_mutex_lock(&num_undestroyed_comms_lock);
+  --num_undestroyed_comms;
+  nccl_net_ofi_mutex_unlock(&num_undestroyed_comms_lock);
+
 	nccl_net_ofi_rdma_device_t *device = NULL;
 	nccl_net_ofi_rdma_domain_t *domain = NULL;
 	int ret = 0;
@@ -3971,6 +3982,9 @@ static inline void free_rdma_send_comm(nccl_net_ofi_rdma_send_comm_t *s_comm) {
 
 static int send_comm_destroy(nccl_net_ofi_rdma_send_comm_t *s_comm)
 {
+  nccl_net_ofi_mutex_lock(&num_undestroyed_comms_lock);
+  --num_undestroyed_comms;
+  nccl_net_ofi_mutex_unlock(&num_undestroyed_comms_lock);
 	int ret = 0;
 
 	/* Release connect response request if available */
@@ -5048,6 +5062,10 @@ static int accept(nccl_net_ofi_listen_comm_t *listen_comm,
 		ret = -EINVAL;
 	}
 
+  nccl_net_ofi_mutex_lock(&num_undestroyed_comms_lock);
+  ++num_undestroyed_comms;
+  nccl_net_ofi_mutex_unlock(&num_undestroyed_comms_lock);
+  
 	nccl_net_ofi_mutex_lock(&comm_cleanup_list_lock);
 	++num_open_comms;
 	nccl_net_ofi_mutex_unlock(&comm_cleanup_list_lock);
@@ -6752,6 +6770,11 @@ static int connect(nccl_net_ofi_ep_t *base_ep,
 		return -EINVAL;
 	};
 
+	nccl_net_ofi_mutex_lock(&num_undestroyed_comms_lock);
+  ++num_undestroyed_comms;
+  nccl_net_ofi_mutex_unlock(&num_undestroyed_comms_lock);
+
+	
 	nccl_net_ofi_mutex_lock(&comm_cleanup_list_lock);
 	++num_open_comms;
 	nccl_net_ofi_mutex_unlock(&comm_cleanup_list_lock);
@@ -7194,11 +7217,15 @@ nccl_net_ofi_rdma_domain_free(nccl_net_ofi_domain_t *base_domain)
 	}
 
 	for (int i = 0 ; i < domain->num_rails ; ++i) {
-		fi_close(&domain->domain_rails[i].domain->fid);
 		if (domain->domain_rails[i].cq != NULL) {
 			fi_close(&domain->domain_rails[i].cq->fid);
 			domain->domain_rails[i].cq = NULL;
 		}
+
+		nccl_net_ofi_mutex_lock(&num_open_domains_lock);
+		fi_close(&domain->domain_rails[i].domain->fid);
+		--num_open_domains;
+		nccl_net_ofi_mutex_unlock(&num_open_domains_lock);
 	}
 
 	ret = nccl_net_ofi_domain_fini(&domain->base);
@@ -7266,8 +7293,12 @@ static nccl_net_ofi_domain_t *nccl_net_ofi_rdma_device_create_domain(nccl_net_of
 		nccl_net_ofi_rdma_device_rail_t *device_rail = rdma_device_get_rail(device, i);
 		nccl_net_ofi_rdma_domain_rail_t *domain_rail = rdma_domain_get_rail(domain, i);
 
+		nccl_net_ofi_mutex_lock(&num_open_domains_lock);
 		ret = fi_domain(device_rail->fabric, device_rail->info,
 				&domain_rail->domain, NULL);
+		++num_open_domains;
+		++total_open_domains;
+		nccl_net_ofi_mutex_unlock(&num_open_domains_lock);
 		if (OFI_UNLIKELY(ret != 0)) {
 			NCCL_OFI_WARN("Couldn't open a fabric access domain. RC: %d, ERROR: %s",
 				      ret, fi_strerror(-ret));
@@ -7665,6 +7696,18 @@ static inline int nccl_net_ofi_rdma_plugin_fini(nccl_net_ofi_plugin_t *plugin)
 	}
 
 	free(plugin);
+	nccl_net_ofi_mutex_lock(&num_open_domains_lock);
+	NCCL_OFI_WARN("Open domains: %d (%d)", num_open_domains, total_open_domains);
+	nccl_net_ofi_mutex_unlock(&num_open_domains_lock);
+
+	nccl_net_ofi_mutex_lock(&comm_cleanup_list_lock);
+	NCCL_OFI_WARN("Open comms: %d", num_open_comms);
+	nccl_net_ofi_mutex_unlock(&comm_cleanup_list_lock);
+
+	  nccl_net_ofi_mutex_lock(&num_undestroyed_comms_lock);
+	NCCL_OFI_WARN("Undestroyed comms: %d", num_undestroyed_comms);
+  nccl_net_ofi_mutex_unlock(&num_undestroyed_comms_lock);
+
 
 	return last_error;
 }
@@ -7786,6 +7829,8 @@ int nccl_net_ofi_rdma_init(const char *provider_filter,
 	nccl_ofi_topo_t *topo = NULL;
 	struct fi_info *hints;
 	uint32_t api_version = 0;
+
+	NCCL_OFI_WARN("Init RDMA");
 
 	*found_multiple_rails = false;
 
