@@ -108,6 +108,17 @@ static struct ec2_platform_data platform_data_map[] = {
 		.domain_per_thread = 1,
 	},
 	{
+		.name = "inf2e.32xlarge",
+		.regex = NULL,
+		.topology = NULL,
+		.default_dup_conns = 0,
+		.latency = 75.0,
+		.gdr_required = true,
+		.net_flush_required = true,
+		.default_protocol = "SENDRECV",
+		.domain_per_thread = 1,
+	},
+	{
 		.name = "trn2",
 		.regex = "^trn2.*",
 		.topology = NULL,
